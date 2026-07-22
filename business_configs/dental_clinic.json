@@ -1,0 +1,20 @@
+{
+  "business_name": "Gülüş Dental Clinic",
+  "description": "Ankara'da faaliyet gösteren, genel diş hekimliği ve estetik diş uygulamaları sunan bir diş kliniği.",
+  "tone": "sıcak, güven veren, profesyonel ama samimi",
+  "services": [
+    { "name": "Diş muayenesi", "price_note": "İlk muayene ücretsiz" },
+    { "name": "Diş taşı temizliği", "price_note": "1500 TL'den başlıyor" },
+    { "name": "Dolgu", "price_note": "800 TL'den başlıyor" },
+    { "name": "Diş beyazlatma", "price_note": "3000 TL'den başlıyor" }
+  ],
+  "hours": {
+    "Pazartesi-Cuma": "09:00 - 19:00",
+    "Cumartesi": "10:00 - 16:00"
+  },
+  "faq": [
+    { "question": "Randevu nasıl alırım?", "answer": "Gün ve saat tercihinizi belirtin, ekibimiz size dönüş yapsın." },
+    { "question": "SGK kabul ediyor musunuz?", "answer": "SGK anlaşmamız yok, ama özel sigortaların çoğuyla anlaşmalıyız." }
+  ],
+  "escalation_note": "Fiyat kesinliği, tıbbi teşhis veya acil durum sorularında kullanıcıyı klinikle telefonla görüşmeye yönlendir."
+}
