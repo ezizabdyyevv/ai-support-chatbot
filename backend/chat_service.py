@@ -27,6 +27,7 @@ Keep answers short and clear (2-4 sentences)."""
 
 
 _SESSIONS: dict[str, list[dict]] = {}
+MAX_HISTORY_MESSAGES = 20
 
 
 def get_reply(session_id: str, user_message: str) -> str:
@@ -44,6 +45,9 @@ def get_reply(session_id: str, user_message: str) -> str:
     )
 
     reply_text = response.content[0].text
-    history.append({"role": "user", "content": reply_text})
+    history.append({"role": "assistant", "content": reply_text})
+
+    if len(history) > MAX_HISTORY_MESSAGES:
+        del history[:-MAX_HISTORY_MESSAGES]
 
     return reply_text

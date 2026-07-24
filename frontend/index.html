@@ -18,12 +18,12 @@
   <h2>Gülüş Dental Clinic — Sohbet</h2>
   <div id="messages"></div>
   <form id="chatForm">
-    <input id="messageInput" type="text" placeholder="Bir mesaj yaz..." required />
+    <input id="messageInput" type="text" placeholder="Enter message..." required />
     <button type="submit">Gönder</button>
   </form>
 
 <script>
-  const API_URL = "http://localhost:8000/api/chat";
+  const API_URL = "/api/chat";
   const sessionId = crypto.randomUUID();
 
   const messagesEl = document.getElementById("messages");
