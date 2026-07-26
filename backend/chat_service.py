@@ -1,22 +1,44 @@
 
 from anthropic import Anthropic
-from oauthlib.openid import connect
+
+from pathlib import  Path
 
 from config import ANTHROPIC_API_KEY, ANTHROPIC_MODEL
 
 from retriever import search
+import json
 
 client = Anthropic(api_key=ANTHROPIC_API_KEY)
 
-def build_system_prompt(retrieved_chunks: list[dict]) -> str:
-    context_text = "\n\n".join(
-        f"[Source: {chunk['source']}]\n{chunk['text']}" for chunk in retrieved_chunks
-        )
+PERSONA_CONFIG_PATH = Path(__file__).parent.parent / "persona.json"
+with open(PERSONA_CONFIG_PATH, encoding="utf-8") as f:
+    persona = json.load(f)
 
-    return f"""You are a customer support assistant for a dental clinic.
+
+CONFIDENCE_THRESHOLD = 1.2
+
+
+def build_system_prompt(retrieved_chunks: list[dict]) -> str:
+    relevant_chunks = [c for c in retrieved_chunks if c["distance"] <= CONFIDENCE_THRESHOLD]
+
+    identity = f"""You are {persona['name']}, a customer support assistant for {persona['business_name']}.
+Tone: {persona['tone']}"""
+
+    if not relevant_chunks:
+        return f"""{identity}
+
+The user's question does not match anything in your knowledge base.
+Tell them you don't have that information and suggest they contact the
+clinic directly. Do not attempt to answer from general knowledge."""
+
+    context_text = "\n\n".join(
+        f"[Source: {chunk['source']}]\n{chunk['text']}" for chunk in relevant_chunks
+    )
+
+    return f"""{identity}
 
 Answer the user's question using ONLY the information in the context below.
-If the answer is not in the context, say you don't have that information
+If the answer is not fully in the context, say you don't have that information
 and suggest the user contact the clinic directly. Do not invent details.
 
 Context:
@@ -44,7 +66,7 @@ def get_reply(session_id: str, user_message: str) -> str:
         messages= history,
     )
 
-    reply_text = response.content[0].text
+    reply_text = "".join(block.text for block in response.content if block.type == "text")
     history.append({"role": "assistant", "content": reply_text})
 
     if len(history) > MAX_HISTORY_MESSAGES:

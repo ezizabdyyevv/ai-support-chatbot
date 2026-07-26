@@ -7,7 +7,6 @@ CHROMA_DB_DIR = Path(__file__).parent.parent / "chroma_db"
 client = chromadb.PersistentClient(path=str(CHROMA_DB_DIR))
 collection = client.get_collection("clinic_documents")
 
-
 def search(query: str, n_results: int = 3) -> list[dict]:
     results = collection.query(
         query_texts=[query],
@@ -15,13 +14,23 @@ def search(query: str, n_results: int = 3) -> list[dict]:
     )
 
     chunks = []
-    for text, metadata in zip(results["documents"][0], results["metadatas"][0]):
-        chunks.append({"text": text, "source": metadata["source"]})
+    for text, metadata, distance in zip(
+        results["documents"][0], results["metadatas"][0], results["distances"][0]
+    ):
+        chunks.append({
+            "text": text,
+            "source": metadata["source"],
+            "distance": distance,
+        })
 
     return chunks
 
 
 if __name__ == "__main__":
-    test_results = search("How long would take root canal treatment??")
-    for r in test_results:
-        print(f"[{r['source']}] {r['text']}\n")
+    print("--- Relevant query ---")
+    for r in search("how long does a root canal take?"):
+        print(f"{r['distance']:.4f}  [{r['source']}]  {r['text'][:60]}...")
+
+    print("\n--- Irrelevant query ---")
+    for r in search("what is the capital of France?"):
+        print(f"{r['distance']:.4f}  [{r['source']}]  {r['text'][:60]}...")
