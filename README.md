@@ -1,15 +1,11 @@
 # AI Customer Support Chatbot (RAG-powered)
 
-A customer-support chatbot backend for a dental clinic, built with FastAPI, ChromaDB, and the Claude API. Instead of hard-coding business information into a single prompt, the bot retrieves the most relevant passages from a document collection for each question — a full Retrieval-Augmented Generation (RAG) pipeline.
-
-# AI Customer Support Chatbot (RAG-powered)
-
 ![Demo](./demo.gif)
 
 **Live demo:** https://ai-support-chatbot-oqrx.onrender.com
 *(Free-tier hosting — first load may take up to a minute if the service was idle.)*
 
-
+A customer-support chatbot backend for a dental clinic, built with FastAPI, ChromaDB, and the Claude API. Instead of hard-coding business information into a single prompt, the bot retrieves the most relevant passages from a document collection for each question — a full Retrieval-Augmented Generation (RAG) pipeline.
 
 ## Evolution note
 
@@ -23,35 +19,42 @@ This project started as a simpler bot with a single hard-coded JSON config (`bus
 
 **Query (runtime, every request):**
 1. Client sends `{session_id, message}` to `POST /api/chat`
-2. `retriever.py` embeds the question and finds the 3 most similar chunks in ChromaDB
-3. `chat_service.py` builds a system prompt containing only those chunks, explicitly instructing the model not to answer beyond what's given
-4. The full conversation history (for that session) plus the fresh system prompt is sent to Claude
-5. The reply is returned and appended to session history
+2. `retriever.py` embeds the question and finds the 3 most similar chunks in ChromaDB, along with a similarity-distance score for each
+3. `chat_service.py` filters out chunks whose distance exceeds a calibrated threshold. If nothing passes, the model is told explicitly that it has no relevant information, instead of being handed weak or irrelevant context
+4. Otherwise, it builds a system prompt combining a small persona config (`persona.json`: name, business identity, tone) with the surviving chunks
+5. The full conversation history (for that session) plus the fresh system prompt is sent to Claude
+6. The reply is returned and appended to session history
+
+### How the confidence threshold was chosen
+
+Rather than picking an arbitrary number, the threshold was calibrated against real ChromaDB distance scores: relevant queries returned distances in the 0.56–0.84 range, while an unrelated query ("what is the capital of France?") returned 1.87–1.95. The threshold (1.2) sits in the gap between these two clusters.
 
 ## Tech stack
 
 - **Backend:** FastAPI + Uvicorn
 - **Vector database:** ChromaDB (persistent, local, built-in embedding function — no external embedding API needed)
 - **LLM:** Claude API (`anthropic` SDK)
-- **Frontend:** Vanilla HTML/CSS/JS, no build step
+- **Frontend:** Vanilla HTML/CSS/JS, served directly by FastAPI (no build step, no separate server)
 
 ## Project structure
 
-
 ai-support-chatbot/
 ├── backend/
-│ ├── main.py # FastAPI routes, CORS
-│ ├── chat_service.py # Session memory, RAG-based system prompt, Claude API calls
+│ ├── main.py # FastAPI routes, CORS, serves frontend/ as static files
+│ ├── chat_service.py # Session memory, confidence-filtered RAG prompt, Claude API calls
 │ ├── retriever.py # Embeds a query and searches ChromaDB
 │ ├── build_index.py # One-time script: chunks documents/, builds the ChromaDB index
 │ ├── models.py # Request/response schemas
 │ └── config.py # Reads API key + model name from .env
 ├── documents/ # Source knowledge base (plain text files)
 ├── chroma_db/ # Generated vector index (gitignored, rebuilt via build_index.py)
+├── persona.json # Bot identity: name, business name, tone
 ├── frontend/
 │ └── index.html
 ├── requirements.txt
 └── .env.example
+
+
 
 ## Getting started
 
@@ -70,24 +73,16 @@ python build_index.py       # builds the vector index from documents/
 uvicorn main:app --reload --port 8000
 ```
 
-In a second terminal:
-
-```bash
-cd frontend
-python3 -m http.server 5500
-```
-
-Open `http://localhost:5500`.
+Open `http://localhost:8000` — FastAPI serves both the API and the chat UI from the same origin.
 
 ## Known limitations
 
 - **Session storage is in-memory** — conversations are lost on server restart.
 - **Chunking is paragraph-based** (splitting on blank lines) — works well for these structured documents, but a production system would likely use a more robust, size-aware chunking strategy for arbitrary documents.
-- **No re-ranking step** — the top-3 chunks from vector similarity are used as-is. For a larger document collection, a re-ranking model would likely improve precision.
-- **Single fixed business identity** — the earlier config-driven persona (business name, tone, hours) was removed when the JSON config was replaced by the document-based knowledge base. A production version would keep a small identity/tone config alongside the document-based knowledge base, rather than hard-coding it into the prompt.
+- **No re-ranking step** — the top-3 chunks from vector similarity are filtered by distance but not re-ranked. For a larger document collection, a dedicated re-ranking model would likely improve precision further.
 
 ## What I'd add next
 
-- Re-introduce a lightweight persona config (name, tone) that combines with retrieved context, so the identity layer and the knowledge layer are decoupled again
-- Add a "confidence" check — if retrieved chunks have low similarity scores, have the bot proactively say it's unsure rather than answering from weak matches
 - Move ChromaDB to a client-server deployment (rather than local persistent file) for multi-instance scaling
+- Log queries that fall below the confidence threshold, to spot recurring gaps in the knowledge base
+- Rate-limit the public demo endpoint to control cost exposure
