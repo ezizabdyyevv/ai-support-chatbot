@@ -2,6 +2,15 @@
 
 A customer-support chatbot backend for a dental clinic, built with FastAPI, ChromaDB, and the Claude API. Instead of hard-coding business information into a single prompt, the bot retrieves the most relevant passages from a document collection for each question — a full Retrieval-Augmented Generation (RAG) pipeline.
 
+# AI Customer Support Chatbot (RAG-powered)
+
+![Demo](./demo.gif)
+
+**Live demo:** https://ai-support-chatbot-oqrx.onrender.com
+*(Free-tier hosting — first load may take up to a minute if the service was idle.)*
+
+
+
 ## Evolution note
 
 This project started as a simpler bot with a single hard-coded JSON config (`business_configs/*.json`) driving the system prompt — see commit history. That approach breaks down once a business's knowledge base grows past a single FAQ page: you can't fit an entire policy manual into a prompt. This version replaces the static config with a proper retrieval pipeline: documents are chunked, embedded, and stored in a vector database, and only the passages relevant to *this specific question* are retrieved and passed to the model.
