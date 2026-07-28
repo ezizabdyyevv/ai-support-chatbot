@@ -32,7 +32,7 @@ Rather than picking an arbitrary number, the threshold was calibrated against re
 ## Tech stack
 
 - **Backend:** FastAPI + Uvicorn
-- **Vector database:** ChromaDB (persistent, local, built-in embedding function — no external embedding API needed)
+- **Vector database:** ChromaDB — supports both embedded (local file, default) and client-server modes via `CHROMA_MODE` in `.env`. The live demo intentionally runs in local mode: a second always-on service isn't worth the added reliability risk on free-tier hosting for a single-instance portfolio demo, but the client-server path is implemented and tested (`chroma_client.py`).
 - **LLM:** Claude API (`anthropic` SDK)
 - **Frontend:** Vanilla HTML/CSS/JS, served directly by FastAPI (no build step, no separate server)
 
@@ -42,6 +42,7 @@ ai-support-chatbot/
 ├── backend/
 │ ├── main.py # FastAPI routes, CORS, serves frontend/ as static files
 │ ├── chat_service.py # Session memory, confidence-filtered RAG prompt, Claude API calls
+│ ├── chroma_client.py  # Switches between local (embedded) and http (client-server) ChromaDB
 │ ├── retriever.py # Embeds a query and searches ChromaDB
 │ ├── build_index.py # One-time script: chunks documents/, builds the ChromaDB index
 │ ├── models.py # Request/response schemas
@@ -83,6 +84,5 @@ Open `http://localhost:8000` — FastAPI serves both the API and the chat UI fro
 
 ## What I'd add next
 
-- Move ChromaDB to a client-server deployment (rather than local persistent file) for multi-instance scaling
 - Log queries that fall below the confidence threshold, to spot recurring gaps in the knowledge base
 - Rate-limit the public demo endpoint to control cost exposure

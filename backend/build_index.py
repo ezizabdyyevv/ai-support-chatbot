@@ -1,13 +1,11 @@
 from pathlib import Path
 
-import chromadb
+from chroma_client import get_collection
 
 DOCUMENTS_DIR = Path(__file__).parent.parent / "documents"
-CHROMA_DB_DIR = Path(__file__).parent.parent / "chroma_db"
 
 
 def load_and_chunk_documents() -> list[dict]:
-
     chunks = []
     for file_path in DOCUMENTS_DIR.glob("*.txt"):
         text = file_path.read_text(encoding="utf-8")
@@ -24,17 +22,15 @@ def load_and_chunk_documents() -> list[dict]:
 
 def build_index():
     chunks = load_and_chunk_documents()
-    print(f"{len(chunks)} Chunk found.")
+    print(f"{len(chunks)} chunks found.")
 
-    client = chromadb.PersistentClient(path=str(CHROMA_DB_DIR))
-    collection = client.get_or_create_collection("clinic_documents")
-
+    collection = get_collection()
     collection.add(
         ids=[c["id"] for c in chunks],
         documents=[c["text"] for c in chunks],
         metadatas=[{"source": c["source"]} for c in chunks],
     )
-    print(f"Index created: {CHROMA_DB_DIR}")
+    print("Index built.")
 
 
 if __name__ == "__main__":

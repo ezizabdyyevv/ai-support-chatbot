@@ -1,11 +1,7 @@
-from pathlib import Path
+from chroma_client import get_collection
 
-import chromadb
+collection = get_collection()
 
-CHROMA_DB_DIR = Path(__file__).parent.parent / "chroma_db"
-
-client = chromadb.PersistentClient(path=str(CHROMA_DB_DIR))
-collection = client.get_collection("clinic_documents")
 
 def search(query: str, n_results: int = 3) -> list[dict]:
     results = collection.query(
