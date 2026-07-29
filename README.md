@@ -60,7 +60,7 @@ ai-support-chatbot/
 ## Getting started
 
 ```bash
-git clone <your-repo-url>
+git clone <https://github.com/ezizabdyyevv/ai-support-chatbot>
 cd ai-support-chatbot
 python3 -m venv .venv
 source .venv/bin/activate
