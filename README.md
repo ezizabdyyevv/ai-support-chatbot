@@ -35,6 +35,7 @@ Rather than picking an arbitrary number, the threshold was calibrated against re
 - **Vector database:** ChromaDB — supports both embedded (local file, default) and client-server modes via `CHROMA_MODE` in `.env`. The live demo intentionally runs in local mode: a second always-on service isn't worth the added reliability risk on free-tier hosting for a single-instance portfolio demo, but the client-server path is implemented and tested (`chroma_client.py`).
 - **LLM:** Claude API (`anthropic` SDK)
 - **Frontend:** Vanilla HTML/CSS/JS, served directly by FastAPI (no build step, no separate server)
+- - **Concurrency safety:** each session's conversation history is protected by a per-session lock, preventing race conditions when a client sends overlapping requests (caught via a concurrent `curl` test during rate-limit testing).
 
 ## Project structure
 
@@ -85,4 +86,3 @@ Open `http://localhost:8000` — FastAPI serves both the API and the chat UI fro
 ## What I'd add next
 
 - Log queries that fall below the confidence threshold, to spot recurring gaps in the knowledge base
-- Rate-limit the public demo endpoint to control cost exposure
