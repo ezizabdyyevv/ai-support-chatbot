@@ -1,11 +1,22 @@
-from fastapi import FastAPI
+
 from models import ChatRequest, ChatResponse
 from chat_service import get_reply
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 from fastapi.staticfiles import StaticFiles
 
+
+from fastapi import FastAPI, Request, HTTPException
+
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+
 app = FastAPI()
+
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,
@@ -20,9 +31,13 @@ def health():
 
 
 @app.post("/api/chat")
-def chat(request: ChatRequest) -> ChatResponse:
-    reply_text = get_reply(request.session_id, request.message)
-    return ChatResponse(reply=reply_text, session_id=request.session_id)
+@limiter.limit("10/minute")
+def chat(request: Request, chat_request: ChatRequest) -> ChatResponse:
+    if not chat_request.message.strip():
+        raise HTTPException(status_code=400, detail="Message cannot be empty")
+
+    reply_text = get_reply(chat_request.session_id, chat_request.message)
+    return ChatResponse(reply=reply_text, session_id=chat_request.session_id)
 
 
 

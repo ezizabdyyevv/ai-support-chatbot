@@ -8,6 +8,8 @@ from config import ANTHROPIC_API_KEY, ANTHROPIC_MODEL
 from retriever import search
 import json
 
+import threading
+
 client = Anthropic(api_key=ANTHROPIC_API_KEY)
 
 PERSONA_CONFIG_PATH = Path(__file__).parent.parent / "persona.json"
@@ -51,25 +53,39 @@ Keep answers short and clear (2-4 sentences)."""
 _SESSIONS: dict[str, list[dict]] = {}
 MAX_HISTORY_MESSAGES = 20
 
+_session_locks: dict[str, threading.Lock] = {}
+_locks_guard = threading.Lock()
+
+
+def _get_session_lock(session_id: str) -> threading.Lock:
+    with _locks_guard:
+        if session_id not in _session_locks:
+            _session_locks[session_id] = threading.Lock()
+        return _session_locks[session_id]
+
+
 
 def get_reply(session_id: str, user_message: str) -> str:
-    history = _SESSIONS.setdefault(session_id, [])
-    history.append({"role": "user", "content":user_message})
+    lock = _get_session_lock(session_id)
+    with lock:
+        history = _SESSIONS.setdefault(session_id, [])
+        history.append({"role": "user", "content": user_message})
 
-    retrieved_chunks = search(user_message, n_results=3)
-    system_prompt = build_system_prompt(retrieved_chunks)
+        retrieved_chunks = search(user_message, n_results=3)
+        relevant_chunks = retrieved_chunks  # confidence filtreleme build_system_prompt içinde
+        system_prompt = build_system_prompt(retrieved_chunks)
 
-    response = client.messages.create(
-        model = ANTHROPIC_MODEL,
-        max_tokens=500,
-        system = system_prompt,
-        messages= history,
-    )
+        response = client.messages.create(
+            model=ANTHROPIC_MODEL,
+            max_tokens=500,
+            system=system_prompt,
+            messages=history,
+        )
 
-    reply_text = "".join(block.text for block in response.content if block.type == "text")
-    history.append({"role": "assistant", "content": reply_text})
+        reply_text = "".join(block.text for block in response.content if block.type == "text")
+        history.append({"role": "assistant", "content": reply_text})
 
-    if len(history) > MAX_HISTORY_MESSAGES:
-        del history[:-MAX_HISTORY_MESSAGES]
+        if len(history) > MAX_HISTORY_MESSAGES:
+            del history[:-MAX_HISTORY_MESSAGES]
 
-    return reply_text
+        return reply_text
