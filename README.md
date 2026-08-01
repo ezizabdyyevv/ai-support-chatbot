@@ -18,16 +18,22 @@ This project started as a simpler bot with a single hard-coded JSON config (`bus
 2. Each chunk is embedded and stored in a persistent ChromaDB collection
 
 **Query (runtime, every request):**
-1. Client sends `{session_id, message}` to `POST /api/chat`
-2. `retriever.py` embeds the question and finds the 3 most similar chunks in ChromaDB, along with a similarity-distance score for each
-3. `chat_service.py` filters out chunks whose distance exceeds a calibrated threshold. If nothing passes, the model is told explicitly that it has no relevant information, instead of being handed weak or irrelevant context
-4. Otherwise, it builds a system prompt combining a small persona config (`persona.json`: name, business identity, tone) with the surviving chunks
-5. The full conversation history (for that session) plus the fresh system prompt is sent to Claude
-6. The reply is returned and appended to session history
+
+1. Client sends `{session_id, message, language}` to `POST /api/chat` (`language` is one of `en`, `ru`, `tr`, `ka`, selected in the UI)
+2. If `language` isn't English, the query is translated to English via a lightweight Claude call before retrieval — the vector index uses ChromaDB's default embedding function, which is English-optimized, so searching in English keeps retrieval quality high without a heavyweight multilingual embedding model
+3. `retriever.py` embeds the (English) query and finds the 3 most similar chunks in ChromaDB, along with a similarity-distance score for each
+4. `chat_service.py` filters out chunks whose distance exceeds a calibrated threshold. If nothing passes, the model is told explicitly that it has no relevant information, instead of being handed weak or irrelevant context
+5. Otherwise, it builds a system prompt combining a small persona config (`persona.json`: name, business identity, tone) with the surviving chunks, instructing the model to reply in the user's selected language
+6. The full conversation history (for that session, in the original language) plus the fresh system prompt is sent to Claude
+7. The reply is returned in the user's language and appended to session history
 
 ### How the confidence threshold was chosen
 
 Rather than picking an arbitrary number, the threshold was calibrated against real ChromaDB distance scores: relevant queries returned distances in the 0.56–0.84 range, while an unrelated query ("what is the capital of France?") returned 1.87–1.95. The threshold (1.2) sits in the gap between these two clusters.
+
+### Why translate-then-retrieve instead of a multilingual embedding model
+
+An earlier version used a multilingual `sentence-transformers` model (`paraphrase-multilingual-MiniLM-L12-v2`) so non-English queries could be embedded directly. In practice this pulled in `torch` as a dependency and pushed memory usage past what Render's free tier (512MB RAM) can handle, causing the deployed service to fail to bind to a port. Translating the query to English first (a single lightweight Claude call) keeps the same lightweight embedding setup for retrieval, avoids the heavy dependency entirely, and — since Claude's translation quality is strong — didn't measurably hurt retrieval accuracy in manual testing across Russian, Turkish, and Georgian queries.
 
 ## Tech stack
 
@@ -36,6 +42,7 @@ Rather than picking an arbitrary number, the threshold was calibrated against re
 - **LLM:** Claude API (`anthropic` SDK)
 - **Frontend:** Vanilla HTML/CSS/JS, served directly by FastAPI (no build step, no separate server)
 - - **Concurrency safety:** each session's conversation history is protected by a per-session lock, preventing race conditions when a client sends overlapping requests (caught via a concurrent `curl` test during rate-limit testing).
+- **Multilingual support:** UI and replies support English, Russian, Turkish, and Georgian. Non-English queries are translated to English before retrieval rather than using a heavyweight multilingual embedding model (see below).
 
 ## Project structure
 
