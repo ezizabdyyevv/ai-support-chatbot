@@ -36,7 +36,7 @@ def chat(request: Request, chat_request: ChatRequest) -> ChatResponse:
     if not chat_request.message.strip():
         raise HTTPException(status_code=400, detail="Message cannot be empty")
 
-    reply_text = get_reply(chat_request.session_id, chat_request.message)
+    reply_text = get_reply(chat_request.session_id, chat_request.message, chat_request.language)
     return ChatResponse(reply=reply_text, session_id=chat_request.session_id)
 
 

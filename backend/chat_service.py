@@ -19,12 +19,21 @@ with open(PERSONA_CONFIG_PATH, encoding="utf-8") as f:
 
 CONFIDENCE_THRESHOLD = 1.2
 
+LANGUAGE_NAMES = {
+    "en": "English",
+    "ru": "Russian",
+    "tr": "Turkish",
+    "ka": "Georgian",
+}
 
-def build_system_prompt(retrieved_chunks: list[dict]) -> str:
+
+def build_system_prompt(retrieved_chunks: list[dict], language: str = "en") -> str:
     relevant_chunks = [c for c in retrieved_chunks if c["distance"] <= CONFIDENCE_THRESHOLD]
+    language_name = LANGUAGE_NAMES.get(language, "English")
 
     identity = f"""You are {persona['name']}, a customer support assistant for {persona['business_name']}.
-Tone: {persona['tone']}"""
+Tone: {persona['tone']}
+Always reply in {language_name}, even though the context below is in English."""
 
     if not relevant_chunks:
         return f"""{identity}
@@ -65,7 +74,7 @@ def _get_session_lock(session_id: str) -> threading.Lock:
 
 
 
-def get_reply(session_id: str, user_message: str) -> str:
+def get_reply(session_id: str, user_message: str, language: str = "en") -> str:
     lock = _get_session_lock(session_id)
     with lock:
         history = _SESSIONS.setdefault(session_id, [])
@@ -73,7 +82,7 @@ def get_reply(session_id: str, user_message: str) -> str:
 
         retrieved_chunks = search(user_message, n_results=3)
         relevant_chunks = retrieved_chunks  # confidence filtreleme build_system_prompt içinde
-        system_prompt = build_system_prompt(retrieved_chunks)
+        system_prompt = build_system_prompt(retrieved_chunks, language)
 
         response = client.messages.create(
             model=ANTHROPIC_MODEL,
