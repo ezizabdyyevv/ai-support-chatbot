@@ -93,4 +93,3 @@ Open `http://localhost:8000` — FastAPI serves both the API and the chat UI fro
 ## What I'd add next
 
 - Log queries that fall below the confidence threshold, to spot recurring gaps in the knowledge base
-- Multilingual Support (including Russian + Georgian + Turkish)
