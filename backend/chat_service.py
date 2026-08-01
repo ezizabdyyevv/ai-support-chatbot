@@ -19,6 +19,18 @@ with open(PERSONA_CONFIG_PATH, encoding="utf-8") as f:
 
 CONFIDENCE_THRESHOLD = 1.2
 
+def translate_to_english(text: str, language: str) -> str:
+    if language == "en":
+        return text
+
+    response = client.messages.create(
+        model=ANTHROPIC_MODEL,
+        max_tokens=200,
+        system="Translate the user's message to English. Reply with ONLY the translation, nothing else.",
+        messages=[{"role": "user", "content": text}],
+    )
+    return "".join(block.text for block in response.content if block.type == "text")
+
 LANGUAGE_NAMES = {
     "en": "English",
     "ru": "Russian",
@@ -80,7 +92,8 @@ def get_reply(session_id: str, user_message: str, language: str = "en") -> str:
         history = _SESSIONS.setdefault(session_id, [])
         history.append({"role": "user", "content": user_message})
 
-        retrieved_chunks = search(user_message, n_results=3)
+        search_query = translate_to_english(user_message, language)
+        retrieved_chunks = search(search_query, n_results=3)
         relevant_chunks = retrieved_chunks  # confidence filtreleme build_system_prompt içinde
         system_prompt = build_system_prompt(retrieved_chunks, language)
 

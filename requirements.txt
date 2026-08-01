@@ -4,5 +4,4 @@ anthropic
 pydantic
 python-dotenv
 chromadb
-sentence-transformers
 slowapi
